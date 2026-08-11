@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+
+# Environment — never commit. Server token is a Mapbox secret key.
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+.idea/
+*.tsbuildinfo

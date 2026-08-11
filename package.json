@@ -1,0 +1,23 @@
+{
+  "name": "light-cycle",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "description": "Real-time multiplayer cycling game — Tron light cycles on real Portland streets",
+  "workspaces": [
+    "client"
+  ],
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "bash scripts/with-node.sh dev:vite",
+    "dev:vite": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "preview": "bash scripts/with-node.sh preview:vite",
+    "preview:vite": "npm run preview -w client",
+    "typecheck": "npm run typecheck -w client",
+    "icons": "node scripts/generate-icons.mjs"
+  }
+}
