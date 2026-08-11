@@ -1,0 +1,729 @@
+/*
+ * Styled for a phone clamped to handlebars in daylight: heavy contrast, large
+ * type, touch targets that work with a gloved thumb, and nothing important
+ * within reach of the notch or the home indicator.
+ */
+
+:root {
+  --bg: #05070d;
+  --panel: rgba(8, 12, 20, 0.88);
+  --panel-edge: rgba(120, 200, 255, 0.18);
+  --text: #eaf3ff;
+  --text-dim: #8b9bb4;
+  --accent: #00e5ff;
+  --warn: #ffb300;
+  --danger: #ff4d5e;
+  --good: #6cf08a;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* The map handles its own gestures; stop the page itself from rubber-banding. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* --- map ------------------------------------------------------------------ */
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+/* Fallback backdrop when no Mapbox token is configured. */
+.map--tokenless {
+  background:
+    linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+    var(--bg);
+}
+
+/* --- screens -------------------------------------------------------------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bottom) + 20px);
+  background: linear-gradient(180deg, rgba(5, 7, 13, 0.94), rgba(5, 7, 13, 0.99));
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.screen--overlay {
+  background: rgba(5, 7, 13, 0.9);
+  backdrop-filter: blur(6px);
+}
+
+.screen__inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brand__title {
+  margin: 0;
+  font-size: clamp(2.5rem, 12vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.brand__accent {
+  color: var(--accent);
+  text-shadow: 0 0 24px rgba(0, 229, 255, 0.6);
+}
+
+.brand__tag {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.rules {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-dim);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.rules li + li {
+  margin-top: 6px;
+}
+
+.rules em {
+  color: var(--text);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.outcome {
+  margin: 0;
+  font-size: 1.8rem;
+  line-height: 1.2;
+  color: var(--danger);
+}
+
+.results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.results div {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.results dt {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.results dd {
+  margin: 4px 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- controls ------------------------------------------------------------- */
+
+.field__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--swatch);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.swatch--on {
+  border-color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 0 18px var(--swatch);
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 14px 18px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+
+.btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04121a;
+  font-size: 1.1rem;
+  box-shadow: 0 0 28px rgba(0, 229, 255, 0.35);
+}
+
+.btn--danger {
+  border-color: rgba(255, 77, 94, 0.5);
+  color: var(--danger);
+}
+
+.btn--ghost {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.note--warn {
+  color: var(--warn);
+}
+
+.note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+/* --- hud ------------------------------------------------------------------ */
+
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+.hud--top {
+  top: calc(var(--safe-top) + 10px);
+  justify-content: space-between;
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  margin: 0 12px;
+  left: 0;
+  right: 0;
+  width: auto;
+  padding: 10px 14px;
+  backdrop-filter: blur(8px);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+}
+
+.stat__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.stat__label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.hud--pills {
+  top: calc(var(--safe-top) + 84px);
+  flex-wrap: wrap;
+  padding: 0 24px;
+}
+
+.pill {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  backdrop-filter: blur(8px);
+}
+
+.pill--good {
+  color: var(--good);
+  border-color: rgba(108, 240, 138, 0.35);
+}
+
+.pill--ok {
+  color: var(--warn);
+  border-color: rgba(255, 179, 0, 0.35);
+}
+
+.pill--bad {
+  color: var(--danger);
+  border-color: rgba(255, 77, 94, 0.4);
+}
+
+/* Sits above the Mapbox attribution strip, which has to stay legible. */
+.hud--bottom {
+  bottom: calc(var(--safe-bottom) + 40px);
+  justify-content: center;
+}
+
+.hud--bottom .btn {
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+}
+
+/* --- setup sheet ---------------------------------------------------------- */
+
+/*
+ * A bottom sheet, not a full screen: the rider is dragging zone corners on the
+ * map above it, so the map has to stay visible and touchable.
+ */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 68vh;
+  overflow-y: auto;
+  /* Stop a scroll inside the sheet chaining to the document, which on iOS
+     Safari surfaces as pull-to-refresh. */
+  overscroll-behavior: contain;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  padding: 8px 18px calc(var(--safe-bottom) + 18px);
+  background: var(--panel);
+  border-top: 1px solid var(--panel-edge);
+  border-radius: 18px 18px 0 0;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * The grip and title row are one drag surface — that whole strip is what a
+ * thumb goes for.
+ *
+ * `touch-action: none` is doing the real work: without it iOS interprets a
+ * downward drag here as a page scroll and fires pull-to-refresh, reloading the
+ * app mid-setup. Declaring the element handles its own gestures stops the
+ * browser claiming them first.
+ */
+.sheet__handle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.sheet__handle:active {
+  cursor: grabbing;
+}
+
+/* While a finger is down the sheet tracks it exactly; the transition is only
+   for the snap back or through on release. */
+.sheet--dragging {
+  transition: none;
+}
+
+/* Collapsed: title row and Start button only, so the map is reachable. */
+.sheet--collapsed .setting,
+.sheet--collapsed .zone-stats,
+.sheet--collapsed .note {
+  display: none;
+}
+
+/* Generous tap target around a small visual grip. */
+.sheet__grip {
+  position: relative;
+  width: 100%;
+  height: 22px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0 0 -4px;
+  cursor: pointer;
+  flex: none;
+}
+
+.sheet__grip::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.sheet__sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.setting__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.setting__hint--warn {
+  color: var(--warn);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper__btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper__value {
+  min-width: 40px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 28px;
+}
+
+.toggle {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease;
+  flex: none;
+}
+
+.toggle--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.toggle--on .toggle__knob {
+  transform: translateX(24px);
+}
+
+.zone-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.linkbtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Draggable zone corner. Large hit area for a gloved thumb. */
+.zone-handle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid #05070d;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(0, 229, 255, 0.8);
+  cursor: grab;
+  touch-action: none;
+}
+
+.zone-handle--active {
+  cursor: grabbing;
+  transform: scale(1.2);
+}
+
+/* --- zone exit alarm ------------------------------------------------------ */
+
+.alarm {
+  position: absolute;
+  top: calc(var(--safe-top) + 84px);
+  left: 12px;
+  right: 12px;
+  z-index: 14;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(120, 20, 30, 0.92);
+  border: 1px solid var(--danger);
+  backdrop-filter: blur(8px);
+  animation: alarm-pulse 1s ease-in-out infinite;
+}
+
+.alarm__title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.alarm__count {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.alarm__sub {
+  font-size: 0.8rem;
+  color: #ffd9dd;
+}
+
+@keyframes alarm-pulse {
+  50% {
+    border-color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alarm {
+    animation: none;
+  }
+}
+
+/* --- debug ---------------------------------------------------------------- */
+
+.debug {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--safe-bottom) + 100px);
+  max-height: 52vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  backdrop-filter: blur(10px);
+  z-index: 15;
+}
+
+.debug__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.debug__close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.debug__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+}
+
+.debug__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.debug__actions .btn {
+  flex: 1;
+}
+
+.debug__value {
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Mapbox attribution is a licence requirement, so it is laid out rather than
+ * hidden: forced into a single row along the bottom edge, with the game's own
+ * controls raised clear of it.
+ */
+.mapboxgl-ctrl-bottom-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  z-index: 5;
+  margin-bottom: calc(var(--safe-bottom) + 2px);
+}
+
+.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {
+  margin: 0 0 0 8px;
+}
