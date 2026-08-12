@@ -1,0 +1,31 @@
+{
+  // Cloudflare Workers, serving the built client as static assets.
+  //
+  // There is no `main` entry point: this is an assets-only Worker, which is
+  // Cloudflare's current recommendation for new static projects over Pages.
+  // When Goalpost 2 adds the Socket.io server it will NOT live here — Workers
+  // cannot run a long-lived Node process. The backend goes to Railway/Render/Fly
+  // and this stays the frontend, which is the split docs/prd.md already plans.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lightcycle",
+  "compatibility_date": "2026-08-01",
+
+  // Both default to true, but wrangler warns on every deploy when they are
+  // implicit. Stated here so the intent is on the record: the workers.dev
+  // hostname is the playtest URL, and preview URLs are what non-production
+  // branches publish to via `wrangler versions upload`.
+  "workers_dev": true,
+  "preview_urls": true,
+
+  "assets": {
+    "directory": "./client/dist",
+
+    // Serve index.html for unmatched routes. No router yet, but the lobby and
+    // game routes arrive at Goalpost 2 and would 404 without this.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,37 @@
+name: CI
+
+# Typecheck and build on branches and PRs, so breakage is caught before it
+# reaches main and triggers a deploy.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # A build needs the token only so Vite can inline it; the map is not
+      # exercised here, so an absent secret still produces a valid bundle.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_MAPBOX_PUBLIC_TOKEN: ${{ secrets.VITE_MAPBOX_PUBLIC_TOKEN }}

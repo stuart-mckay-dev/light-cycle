@@ -1,0 +1,19 @@
+# Cloudflare static-asset headers.
+
+# The service worker must never be served stale, or a deploy can be masked by a
+# cached worker that keeps handing out the old shell.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# The manifest changes rarely but is cheap; keep it short-lived so an icon or
+# name change is picked up without waiting out a long TTL.
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+# Build output is content-hashed, so it is safe to cache hard and forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
