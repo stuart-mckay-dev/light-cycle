@@ -39,7 +39,16 @@ export interface SmootherStats {
 
 export class GpsSmoother {
   private window: PositionFix[] = [];
+  /** Last smoothed output — the reference for the deadband. */
   private last: PositionFix | null = null;
+  /**
+   * Last *raw* fix that was accepted — the reference for the speed and
+   * ordering checks. It must be raw, not smoothed: the smoothed position lags
+   * the rider by about half the window, so measuring a new raw fix against it
+   * overstates speed (~2.5x at a window of 4 and one fix per second) and
+   * rejected ordinary fast riding as a GPS jump.
+   */
+  private lastRaw: PositionFix | null = null;
   private correctionTotal = 0;
   private intervalTotal = 0;
   private acceptedCount = 0;
@@ -55,8 +64,8 @@ export class GpsSmoother {
       return { fix: null, rejected: 'accuracy' };
     }
 
-    if (this.last) {
-      const dt = (raw.timestamp - this.last.timestamp) / 1000;
+    if (this.lastRaw) {
+      const dt = (raw.timestamp - this.lastRaw.timestamp) / 1000;
 
       // A fix older than one already accepted is out of order — drop it.
       if (dt <= 0) {
@@ -64,7 +73,7 @@ export class GpsSmoother {
         return { fix: null, rejected: 'stale' };
       }
 
-      const impliedSpeed = haversineMeters(this.last, raw) / dt;
+      const impliedSpeed = haversineMeters(this.lastRaw, raw) / dt;
       if (impliedSpeed > maxPlausibleSpeedMps) {
         this.rejectedCounts.speed++;
         return { fix: null, rejected: 'speed' };
@@ -102,6 +111,7 @@ export class GpsSmoother {
     this.correctionTotal += haversineMeters(raw, smoothed);
     this.acceptedCount++;
     this.last = smoothed;
+    this.lastRaw = raw;
 
     return { fix: smoothed, rejected: null };
   }
@@ -118,6 +128,7 @@ export class GpsSmoother {
   reset(): void {
     this.window = [];
     this.last = null;
+    this.lastRaw = null;
     this.correctionTotal = 0;
     this.intervalTotal = 0;
     this.acceptedCount = 0;

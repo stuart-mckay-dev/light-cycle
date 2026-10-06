@@ -136,6 +136,12 @@ Spacing is now measured from the last *committed* vertex. The last element of th
 
 Worth confirming on the outdoor ride: walk the bike slowly for a block and check that the trail draws behind you.
 
+**Fixed 6 October 2026 — fast riding was rejected as GPS jumps.** The implausible-speed check in client/src/utils/smoothing.ts measured each new raw fix against the last *smoothed* position. The smoothed position lags the rider by about half the averaging window, so with `smoothingWindow: 4` at one fix per second the implied speed came out at roughly 2.5 times the real speed. Anything above about 9 m/s (32 km/h) crossed the 22 m/s limit and was dropped; the check then kept rejecting until enough time had passed for the gap to look plausible again. In a simulated ride at 9 m/s, 96 of 120 fixes were rejected; at 12 m/s, 109 of 120.
+
+The check now measures against the last accepted *raw* fix. The smoothed position is still the reference for the deadband. Re-tested at 5 to 20 m/s, nothing is rejected; a single 400 m jump mid-ride is still rejected and the next fix is accepted, and out-of-order fixes are still dropped as stale.
+
+Worth confirming on the outdoor ride: a fast downhill stretch should draw a continuous trail, and the debug panel's speed-rejection count should stay near zero.
+
 ### Deliverable Checklist
 
 | Deliverable | Status | Notes |
