@@ -46,7 +46,7 @@ This goalpost intentionally avoids all network multiplayer concerns. It validate
 
 - Self-collision detection — player eliminated when their current position is within threshold distance of their own tail
 
-- Tail expiration — tail segments older than a configurable TTL are removed from the active collision surface
+- Tail limit — ~~tail segments older than a configurable TTL are removed from the active collision surface~~ *Changed to a length limit; see Implementation Note 4.*
 
 - Single-player game loop — start, active, eliminated, restart
 
@@ -108,7 +108,7 @@ Power-up points serve a dual purpose in Goalpost 1: they give the player a goal 
 >
 > ✓ Self-collision detection triggers correctly when the player crosses their own tail, without significant false positives from GPS jitter.
 >
-> ✓ Tail expiration removes old segments from the collision surface after the configured TTL.
+> ✓ ~~Tail expiration removes old segments from the collision surface after the configured TTL.~~ The tail is trimmed from its oldest end to the rider's length budget, which grows with each power-up (Implementation Note 4).
 >
 > ✓ The game loop completes — start, play, elimination, restart — without requiring a page reload.
 
@@ -120,7 +120,9 @@ Two things were built differently from the scope above. Both are deliberate and 
 
 2\. Power-ups are snapped to the rideable street graph rather than placed at fixed coordinates. A purely geometric scatter put nodes in the Willamette and inside city blocks. Candidates are now snapped onto the nearest street, path, trail, alley or parking aisle using the Mapbox Tilequery API, which works with the public token; Map Matching needs the secret key and stays server-side until Goalpost 3. A candidate with nothing rideable within the snap radius is dropped rather than relocated.
 
-3\. The geofenced play zone was pulled forward from Goalpost 3 and is enforced on the client. Goalpost 1 was otherwise field-testing a game that cannot really be lost: with a three-minute tail TTL a rider escapes any developing situation by riding in a straight line and waiting it out, so nothing forces the doubling-back that creates the danger. The rider sets a four-cornered box with draggable corners before the ride; leaving it starts a grace countdown and then eliminates. Power-up nodes are constrained to the zone. It becomes server-authoritative at Goalpost 3 along with everything else, and the richer boundary tools - freehand drawing, arbitrary corner counts, interior exclusion zones, street-based boundaries - are parked in future-directions.md.
+3\. The geofenced play zone was pulled forward from Goalpost 3 and is enforced on the client. Goalpost 1 was otherwise field-testing a game that cannot really be lost: with an expiring tail (a three-minute TTL at the time) a rider escapes any developing situation by riding in a straight line and waiting it out, so nothing forces the doubling-back that creates the danger. The rider sets a four-cornered box with draggable corners before the ride; leaving it starts a grace countdown and then eliminates. Power-up nodes are constrained to the zone. It becomes server-authoritative at Goalpost 3 along with everything else, and the richer boundary tools - freehand drawing, arbitrary corner counts, interior exclusion zones, street-based boundaries - are parked in future-directions.md.
+
+4\. The tail is limited by length, not by time (changed 6 October 2026). With a three-minute TTL, a rider who got boxed in could stand still until their whole trail expired, then ride out across a clear map; slower riders also trailed shorter tails than fast ones over the same three minutes. The tail now has a length budget: it starts at 500 m and every power-up adds 150 m (tail.startingLengthMeters and powerUps.lengthPerPickupMeters). Once the tail is longer than the budget it is trimmed from the oldest end, cut part-way along a segment so it is exactly the budget long. Standing still never shortens it - in testing, ten minutes stationary with GPS jitter moved the oldest end by at most one vertex spacing (6 m). Power-ups now trade safety for score: each one makes the rider's own trail longer and more dangerous. The 1 Hz expiry sweep and its useGameTick hook were removed, since nothing changes while the rider is still. Score per pickup is unchanged, and there is no cap on the budget yet. At Goalpost 2 the server trims by length; the planned MongoDB TTL index on tail_entries no longer drives the game (see schema.md).
 
 Toolchain note: the project now runs on Node 24 LTS, TypeScript 7 and Vite 8. ../RUNBOOK.md has been updated to match.
 
@@ -143,8 +145,8 @@ Worth confirming on the outdoor ride: walk the bike slowly for a block and check
 | Geolocation watch with high accuracy mode        | **Complete**    | Always high accuracy. The tiered model in prd.md 8.1 remains deferred to Goalpost 3.                                          |
 | GPS smoothing utility                            | **Complete**    | Accuracy and implausible-speed rejection, then an accuracy-weighted moving average with a deadband.                             |
 | Mapbox GL JS map with player position marker     | **Complete**    | Dark style, camera follows the rider. Game still runs without a token on a grid backdrop.                                       |
-| Tail polyline rendering from position history    | **Complete**    | Blurred glow pass under a gradient core, so the expiring end reads dim.                                                         |
-| Tail TTL expiration                              | **Complete**    | Client-side for now; becomes the MongoDB TTL index on expiresAt at Goalpost 2.                                                  |
+| Tail polyline rendering from position history    | **Complete**    | Blurred glow pass under a gradient core, so the oldest end, the next to be trimmed, reads dim.                                  |
+| Tail length limit (replaced TTL expiration)      | **Complete**    | 500 m to start, +150 m per power-up. Client-side for now; server-side trimming at Goalpost 2. See Implementation Note 4.         |
 | Power-up markers and proximity collection        | **Complete**    | Placement changed from fixed coordinates - see Implementation Notes below.                                                      |
 | Self-collision proximity detection               | **Complete**    | Proximity trigger plus a crossing-angle filter - see Implementation Notes below.                                                |
 | Game state machine (start / active / eliminated) | **Complete**    | idle to locating to active to eliminated, restart without a page reload.                                                        |
@@ -179,7 +181,7 @@ Collision detection between players is not the focus of Goalpost 2. The goal is 
 
 - Tail state management on the server — authoritative tail queue per player
 
-- MongoDB — lobby documents and tail_entries collection with TTL index
+- MongoDB — lobby documents and tail_entries collection (tails trimmed by length on the server; see Implementation Note 4)
 
 - Proxmox dev server deployment via Cloudflare Tunnel for real-device testing
 
@@ -191,7 +193,7 @@ Collision detection between players is not the focus of Goalpost 2. The goal is 
 
 - Self-collision detection
 
-- Tail TTL expiration (now server-authoritative)
+- Tail length limit and power-up extensions (now server-authoritative)
 
 ### Out of Scope for Goalpost 2
 
@@ -239,7 +241,7 @@ The primary engineering effort of Goalpost 2 is the Socket.io event flow. The ev
 >
 > ✓ Each player sees the other's path tail rendered correctly and updating as they ride.
 >
-> ✓ Tail expiration works correctly for all players across the network — expired segments disappear from all clients simultaneously.
+> ✓ Tail trimming works correctly for all players across the network — trimmed segments disappear from all clients simultaneously.
 >
 > ✓ A player who refreshes their browser rejoins the lobby with their tail state intact.
 >
@@ -290,11 +292,11 @@ By the time Goalpost 3 begins, the risky unknowns have been resolved. GPS behavi
 
 - Player-to-player tail collision (own tail collision carried forward from Goalpost 1)
 
-- Player elimination flow — eliminated player's tail remains visible until TTL expiry, player transitions to spectator view
+- Player elimination flow — eliminated player's tail remains visible until the end of the game, player transitions to spectator view
 
 - Game over condition — last player standing wins, results screen
 
-- Host game configuration — play zone selection, tail TTL duration
+- Host game configuration — play zone selection, starting tail length and length per power-up
 
 - Predefined color palette with colorblind-accessible colors and per-lobby claim/release
 
@@ -359,7 +361,7 @@ By the time Goalpost 3 begins, the risky unknowns have been resolved. GPS behavi
 | Geofenced play zone enforcement               | **Not Started** |           |
 | Player elimination and spectator transition   | **Not Started** |           |
 | Game over / winner declaration flow           | **Not Started** |           |
-| Host lobby configuration UI (zone, TTL)       | **Not Started** |           |
+| Host lobby config UI (zone, tail length)      | **Not Started** |           |
 | Color palette claim/release system            | **Not Started** |           |
 | Full outdoor group test (3+ players)          | **Not Started** |           |
 

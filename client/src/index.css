@@ -299,6 +299,12 @@ body {
   line-height: 1.1;
 }
 
+.stat__of {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
 .stat__label {
   font-size: 0.6rem;
   letter-spacing: 0.1em;

@@ -17,7 +17,6 @@ import { DebugPanel } from '@/components/DebugPanel';
 
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useWakeLock } from '@/hooks/useWakeLock';
-import { useGameTick } from '@/hooks/useGameTick';
 import { useGameActions, useGameStore } from '@/store/gameStore';
 
 export function Game() {
@@ -27,6 +26,7 @@ export function Game() {
   const rawPosition = useGameStore((s) => s.rawPosition);
   const heading = useGameStore((s) => s.heading);
   const tail = useGameStore((s) => s.tail);
+  const tailMaxLengthMeters = useGameStore((s) => s.tailMaxLengthMeters);
   const powerUps = useGameStore((s) => s.powerUps);
   const powerUpsPlacing = useGameStore((s) => s.powerUpsPlacing);
   const powerUpError = useGameStore((s) => s.powerUpError);
@@ -59,7 +59,6 @@ export function Game() {
 
   useGeolocation(tracking, { onFix, onError });
   const wakeLock = useWakeLock(tracking);
-  useGameTick(status === 'active', actions.tick);
 
   const collected = powerUps.filter((p) => p.collected).length;
 
@@ -83,6 +82,7 @@ export function Game() {
           score={score}
           startedAt={startedAt}
           tail={tail}
+          tailMaxLengthMeters={tailMaxLengthMeters}
           powerUps={powerUps}
           position={position}
           powerUpsPlacing={powerUpsPlacing}

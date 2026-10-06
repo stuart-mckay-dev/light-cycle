@@ -4,11 +4,11 @@
 
 **Status as of 10 August 2026: Goalpost 1 (single-player) is built and not yet field tested.**
 
-This document describes the target MVP. Everything covering multiplayer, lobbies, invite codes, map matching, server-side collision arbitration, the geofenced play zone and the tiered accuracy model is specified but not implemented - Goalpost 1 is client-only. Two deliberate deviations are recorded in mvp-scope.md: self-collision adds a crossing-angle filter on top of proximity so that riding back along your own tail is not fatal, and power-ups are snapped onto the rideable street graph rather than placed at fixed coordinates.
+This document describes the target MVP. Everything covering multiplayer, lobbies, invite codes, map matching, server-side collision arbitration, the geofenced play zone and the tiered accuracy model is specified but not implemented - Goalpost 1 is client-only. Two deliberate deviations are recorded in mvp-scope.md: self-collision adds a crossing-angle filter on top of proximity so that riding back along your own tail is not fatal, power-ups are snapped onto the rideable street graph rather than placed at fixed coordinates, and (6 October 2026) tails are limited by length rather than by time, with each power-up extending the length.
 
 ## 1. Product Overview
 
-Light Cycle is a real-time multiplayer cycling game played on bicycles within a geofenced urban area. Inspired by the Tron light cycle game, players leave expiring path tails behind them as they ride city streets. A player is eliminated when they cross another player's active tail or their own at an intersection. The last rider surviving wins.
+Light Cycle is a real-time multiplayer cycling game played on bicycles within a geofenced urban area. Inspired by the Tron light cycle game, players leave length-limited path tails behind them as they ride city streets; collecting power-ups makes a tail longer. A player is eliminated when they cross another player's active tail or their own at an intersection. The last rider surviving wins.
 
 The MVP targets Portland, Oregon as the sole launch market, leveraging its dense cycling culture and well-mapped street infrastructure as an ideal testing environment.
 
@@ -104,7 +104,7 @@ Persistent accounts, player history, and statistics are deferred to a future ite
 
 | State | Description |
 |---------------|-------------------------------------------------------------------------------------------------------------|
-| **Waiting**   | Host configures play zone, tail expiration duration, and reviews player list. Players join via invite code. |
+| **Waiting**   | Host configures play zone, tail length settings, and reviews player list. Players join via invite code. |
 | **Countdown** | Host triggers game start. Synchronized countdown broadcast to all players.                                  |
 | **Active**    | Game in progress. Position sync, tail recording, and collision detection are live.                          |
 | **Game Over** | One player remains or all players eliminated. Results displayed. Lobby document TTL expires in MongoDB.     |
@@ -113,7 +113,7 @@ Persistent accounts, player history, and statistics are deferred to a future ite
 
 - Geofenced play zone — host draws or selects a boundary on the map before game start.
 
-- Tail expiration duration — configurable TTL in minutes determining how long a player's path persists as an active collision surface.
+- Tail length — the starting length budget in metres (default 500) and the metres each power-up adds (default 150). A tail longer than its budget is trimmed from the oldest end, so standing still never shortens it. This replaced a time-based TTL, which let a stuck rider wait for their whole tail to expire.
 
 ## 8. Geolocation and Position Sync
 
@@ -144,9 +144,9 @@ For positions on or near mapped roads, player coordinates are snapped to the nea
 
 - Each tail entry contains: player UUID, segment ID, timestamp.
 
-- Tail expiration is handled by a MongoDB TTL index on the timestamp field. The TTL duration is the configurable game parameter set in the lobby. No application-level expiration logic is required.
+- Tail length is enforced by the server: after recording a player's new entries it trims their oldest entries beyond the player's current length budget. Each entry stores its ground length so the trim is a newest-first sum.
 
-- The tail TTL index makes switching to permanent tails (for a future territory game mode) a configuration change rather than an architectural change.
+- Permanent tails (for a future territory game mode) are an unbounded length budget - a configuration change rather than an architectural change.
 
 ### 9.2 Off-Graph Mode
 
@@ -156,7 +156,7 @@ When map matching confidence falls below a defined threshold, the system falls b
 
 - Off-graph tails participate in collision detection via geometric line intersection rather than segment ID comparison.
 
-- The same TTL expiration applies to both segment and GPS entries.
+- The same length budget applies to both segment and GPS entries.
 
 ### 9.3 Tail Data Model (MongoDB)
 
@@ -169,7 +169,8 @@ Collection: tail_entries
 | **segmentId**      | String \| null        | Mapbox segment ID — null for off-graph entries |
 | **gpsCoordsStart** | GeoJSON Point \| null | For off-graph entries only                     |
 | **gpsCoordsEnd**   | GeoJSON Point \| null | For off-graph entries only                     |
-| **timestamp**      | Date                  | TTL index on this field — controls expiration  |
+| **timestamp**      | Date                  | Orders entries for length trimming             |
+| **lengthMeters**   | Number                | Summed newest-first to enforce the budget      |
 
 ## 10. Collision Detection
 
@@ -205,7 +206,7 @@ A collision occurs when a player crosses another player's active tail — or the
 
 - Each player leaves a path tail behind them as they ride.
 
-- Tails expire after a configurable duration (set by host at lobby creation).
+- Tails are limited by length: a starting budget set by the host, extended by each power-up collected. The oldest end is trimmed as the rider moves.
 
 - A player is eliminated when they cross any active tail — their own or another player's — at an intersection.
 
@@ -224,7 +225,7 @@ Alternative rulesets (explicit enclosure elimination, permanent territory tails)
 | **lobby:join**            | Client → Server | Player joins lobby with UUID, nickname, color |
 | **lobby:leave**           | Client → Server | Player disconnects or leaves lobby            |
 | **lobby:player_list**     | Server → All    | Broadcast updated player list on join/leave   |
-| **lobby:config_update**   | Host → Server   | Host updates play zone or tail TTL            |
+| **lobby:config_update**   | Host → Server   | Host updates play zone or tail length settings |
 | **lobby:start_countdown** | Host → Server   | Host triggers game start sequence             |
 | **lobby:countdown**       | Server → All    | Synchronized countdown broadcast              |
 | **game:start**            | Server → All    | Game state transitions to Active              |
@@ -250,7 +251,7 @@ Each phase should be independently testable before proceeding to the next.
 
 3.  Real-time position sync — Socket.io position emission, server broadcast, live player markers on map.
 
-4.  Map matching and tail recording — Mapbox Map Matching API integration, segment storage, TTL index, off-graph GPS fallback, tail rendering.
+4.  Map matching and tail recording — Mapbox Map Matching API integration, segment storage, length-based tail trimming, off-graph GPS fallback, tail rendering.
 
 5.  Collision detection and game state — intersection crossing logic, elimination events, game over condition.
 

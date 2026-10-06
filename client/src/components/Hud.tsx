@@ -9,6 +9,7 @@ interface HudProps {
   score: number;
   startedAt: number | null;
   tail: TailPoint[];
+  tailMaxLengthMeters: number;
   powerUps: PowerUp[];
   position: PositionFix | null;
   powerUpsPlacing: boolean;
@@ -34,6 +35,11 @@ function formatDistance(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`;
 }
 
+/** Compact form for the trail budget, which sits beside the live length in one stat. */
+function formatBudget(meters: number): string {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+}
+
 /** Reported accuracy, bucketed into something legible at a glance while riding. */
 function accuracyBand(accuracy: number | undefined): { label: string; tone: string } {
   if (accuracy === undefined) return { label: 'no fix', tone: 'bad' };
@@ -48,6 +54,7 @@ export function Hud({
   score,
   startedAt,
   tail,
+  tailMaxLengthMeters,
   powerUps,
   position,
   powerUpsPlacing,
@@ -108,7 +115,10 @@ export function Hud({
           <span className="stat__label">elapsed</span>
         </div>
         <div className="stat">
-          <span className="stat__value">{formatDistance(tailLengthMeters(tail))}</span>
+          <span className="stat__value">
+            {formatDistance(tailLengthMeters(tail))}
+            <span className="stat__of"> / {formatBudget(tailMaxLengthMeters)}</span>
+          </span>
           <span className="stat__label">trail</span>
         </div>
       </div>

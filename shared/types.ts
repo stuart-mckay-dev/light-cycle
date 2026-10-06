@@ -95,7 +95,9 @@ export interface Lobby {
   hostUUID: string;
   status: LobbyStatus;
   playZone: GeoJSONPolygon;
-  tailTTLSeconds: number;
+  /** Starting trail length in metres; each power-up adds to it. */
+  tailStartLengthMeters: number;
+  tailLengthPerPickupMeters: number;
   players: Player[];
   createdAt: string;
   gameStartedAt?: string;
@@ -141,7 +143,11 @@ export interface GameSettings {
 export interface ClientToServerEvents {
   'lobby:join': (payload: { inviteCode: string; uuid: string; nickname: string; color: PlayerColor }) => void;
   'lobby:leave': (payload: { uuid: string }) => void;
-  'lobby:config_update': (payload: { playZone?: GeoJSONPolygon; tailTTLSeconds?: number }) => void;
+  'lobby:config_update': (payload: {
+    playZone?: GeoJSONPolygon;
+    tailStartLengthMeters?: number;
+    tailLengthPerPickupMeters?: number;
+  }) => void;
   'lobby:start_countdown': () => void;
   'game:position_update': (payload: PositionFix) => void;
 }

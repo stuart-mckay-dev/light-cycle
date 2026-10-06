@@ -1,14 +1,14 @@
 /**
- * Tail recording and expiry.
+ * Tail recording and trimming.
  *
- * The tail is a chronological list of vertices. Two properties keep it cheap:
- * points are appended by *distance* travelled rather than by time, and because
- * timestamps only increase, TTL expiry is a prefix trim rather than a filter.
+ * The tail is a chronological list of vertices. Points are appended by
+ * *distance* travelled rather than by time, and the tail is limited by total
+ * length: once it is longer than the rider's budget, the oldest end is trimmed
+ * back to exactly that length. Standing still therefore never shortens it.
  *
- * At Goalpost 2 this becomes server-authoritative and expiry moves to a MongoDB
- * TTL index on `expiresAt`. The shape of the data is kept deliberately close to
- * the `tail_entries` schema so that migration is a transport change, not a
- * rewrite.
+ * At Goalpost 2 this becomes server-authoritative. Vertices keep their
+ * timestamps, so the shape stays close to the `tail_entries` schema, but the
+ * server trims by length rather than relying on a MongoDB TTL index.
  */
 
 import { haversineMeters } from '@/utils/geo';
@@ -80,30 +80,49 @@ export function appendTailPoint(
   return { points: result, appended };
 }
 
+export interface TrimResult {
+  points: TailPoint[];
+  /** Whole vertices removed from the oldest end. */
+  trimmed: number;
+}
+
 /**
- * Drops vertices older than the TTL.
+ * Trims the oldest end of the tail so its total length does not exceed
+ * `maxLengthMeters`.
  *
- * Points are chronological, so this is a binary search for the cut index and a
- * slice — no per-point scan.
+ * The cut lands part-way along a segment rather than on a vertex, so the tail
+ * is exactly the budget long instead of losing up to a whole segment at a time.
+ * The new first point is interpolated in position and time.
  */
-export function expireTailPoints(
+export function trimTailToLength(
   points: readonly TailPoint[],
-  now: number,
-  ttlSeconds: number = GAME_CONFIG.tailTTLSeconds,
-): TailPoint[] {
-  const cutoff = now - ttlSeconds * 1000;
+  maxLengthMeters: number,
+): TrimResult {
+  if (points.length < 2) return { points: points as TailPoint[], trimmed: 0 };
 
-  if (points.length === 0 || points[0]!.t >= cutoff) return points as TailPoint[];
+  // Walk back from the head until the budget runs out.
+  let remaining = Math.max(0, maxLengthMeters);
+  for (let i = points.length - 1; i > 0; i--) {
+    const b = points[i]!;
+    const a = points[i - 1]!;
+    const segment = haversineMeters(a, b);
 
-  let lo = 0;
-  let hi = points.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (points[mid]!.t < cutoff) lo = mid + 1;
-    else hi = mid;
+    if (segment < remaining || segment === 0) {
+      remaining -= segment;
+      continue;
+    }
+
+    // The budget ends inside segment a→b: cut it `remaining` metres back from b.
+    const f = remaining / segment;
+    const cut: TailPoint = {
+      lng: b.lng + (a.lng - b.lng) * f,
+      lat: b.lat + (a.lat - b.lat) * f,
+      t: Math.round(b.t + (a.t - b.t) * f),
+    };
+    return { points: [cut, ...points.slice(i)], trimmed: i - 1 };
   }
 
-  return points.slice(lo);
+  return { points: points as TailPoint[], trimmed: 0 };
 }
 
 /** Total ground distance covered by the tail, in metres. */
@@ -113,10 +132,4 @@ export function tailLengthMeters(points: readonly TailPoint[]): number {
     total += haversineMeters(points[i - 1]!, points[i]!);
   }
   return total;
-}
-
-/** Age of the oldest surviving vertex, in seconds. Drives the TTL readout. */
-export function oldestPointAgeSeconds(points: readonly TailPoint[], now: number): number {
-  if (points.length === 0) return 0;
-  return (now - points[0]!.t) / 1000;
 }

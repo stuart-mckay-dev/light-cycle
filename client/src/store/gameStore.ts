@@ -8,10 +8,12 @@
  * is known. The map is live during this state and positions keep arriving, but
  * nothing is recorded and the clock has not started.
  *
- * All game logic funnels through two entry points — `onFix`, driven by the
- * Geolocation API, and `tick`, driven by a 1 Hz timer for TTL expiry. Keeping it
- * to two makes the whole loop reproducible from a recorded ride log, which is
- * what makes threshold tuning possible without going outside for every change.
+ * All game logic funnels through one entry point, `onFix`, driven by the
+ * Geolocation API. The tail is limited by length rather than time, so nothing
+ * changes while the rider stands still and no clock-driven sweep is needed.
+ * Keeping it to one makes the whole loop reproducible from a recorded ride log,
+ * which is what makes threshold tuning possible without going outside for
+ * every change.
  *
  * At Goalpost 2 the server owns tail state and collisions; `onFix` becomes an
  * emit and the results arrive over Socket.io. The state shape is chosen so that
@@ -20,7 +22,7 @@
 
 import { create } from 'zustand';
 import { GAME_CONFIG } from '@/config/gameConfig';
-import { appendTailPoint, expireTailPoints, tailLengthMeters } from '@/game/tail';
+import { appendTailPoint, tailLengthMeters, trimTailToLength } from '@/game/tail';
 import { detectSelfCollision, inferHeading } from '@/game/collision';
 import { collectNearby, generatePowerUps } from '@/game/powerups';
 import { defaultGeofence, zoneStatus } from '@/game/geofence';
@@ -79,6 +81,8 @@ interface GameState {
   heading: number | null;
 
   tail: TailPoint[];
+  /** Longest the tail may be, in metres. Starts at the configured length; each pickup extends it. */
+  tailMaxLengthMeters: number;
   powerUps: PowerUp[];
   /** Placement snaps nodes to the street graph over the network — it takes a moment. */
   powerUpsPlacing: boolean;
@@ -102,7 +106,6 @@ interface GameState {
     placePowerUps: (origin: { lng: number; lat: number }, sessionStart: number) => Promise<void>;
     onFix: (raw: PositionFix) => void;
     onGeoError: (message: string) => void;
-    tick: () => void;
     quit: () => void;
     reset: () => void;
     setColor: (color: PlayerColor) => void;
@@ -123,6 +126,7 @@ const initialState = {
   rawPosition: null,
   heading: null,
   tail: [] as TailPoint[],
+  tailMaxLengthMeters: GAME_CONFIG.tail.startingLengthMeters as number,
   powerUps: [] as PowerUp[],
   powerUpsPlacing: false,
   powerUpError: null as string | null,
@@ -293,22 +297,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       const now = fix.timestamp;
       const point: TailPoint = { lng: fix.lng, lat: fix.lat, t: now };
 
-      // Expire before appending so the grace window is measured against a tail
-      // that is already TTL-correct.
-      const live = expireTailPoints(state.tail, now);
-      const { points: tail, appended } = appendTailPoint(live, point);
+      const { points: grown, appended } = appendTailPoint(state.tail, point);
+
+      // Pickups extend the trail budget before it is applied, so the metres a
+      // node earns are never trimmed away on the fix that collected it.
+      const { powerUps, collected } = collectNearby(state.powerUps, fix, now);
+      const tailMaxLengthMeters =
+        state.tailMaxLengthMeters + collected.length * GAME_CONFIG.powerUps.lengthPerPickupMeters;
+
+      // Trim after appending so the grace window and collision checks see a tail
+      // that is already within budget.
+      const { points: tail, trimmed } = trimTailToLength(grown, tailMaxLengthMeters);
 
       if (appended) {
         logEvent({
           type: 'tail',
           points: tail.length,
           lengthMeters: Math.round(tailLengthMeters(tail)),
-          expired: state.tail.length - live.length,
+          maxLengthMeters: tailMaxLengthMeters,
+          trimmed,
         });
       }
 
       const heading = inferHeading(tail);
-      const { powerUps, collected } = collectNearby(state.powerUps, fix, now);
       const score = state.score + collected.length * GAME_CONFIG.powerUps.scorePerPickup;
 
       for (const pickup of collected) {
@@ -317,6 +328,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           id: pickup.id,
           roadClass: pickup.roadClass,
           score,
+          maxLengthMeters: tailMaxLengthMeters,
         });
       }
 
@@ -393,6 +405,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           rawPosition: raw,
           heading,
           tail,
+          tailMaxLengthMeters,
           powerUps,
           score,
           outsideZoneSince,
@@ -407,6 +420,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         rawPosition: raw,
         heading,
         tail,
+        tailMaxLengthMeters,
         powerUps,
         score,
         outsideZoneSince,
@@ -418,15 +432,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     onGeoError: (message) => {
       logEvent({ type: 'geo_error', message });
       set({ geoError: message });
-    },
-
-    /** 1 Hz sweep so tails visibly expire even when the rider is stopped. */
-    tick: () => {
-      const state = get();
-      if (state.status !== 'active' || state.tail.length === 0) return;
-
-      const tail = expireTailPoints(state.tail, Date.now());
-      if (tail.length !== state.tail.length) set({ tail });
     },
 
     quit: () => {
@@ -485,7 +490,7 @@ export const useGameStore = create<GameState>((set, get) => ({
      *
      * The clock, the tail and the arming delay all start here rather than at
      * the first fix, so time spent choosing a zone does not count against the
-     * rider or expire their tail before they have laid any.
+     * rider.
      */
     startRide: () => {
       const state = get();
@@ -499,6 +504,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         startedAt: start,
         position: state.position,
         tail: [{ lng: state.position.lng, lat: state.position.lat, t: start }],
+        tailMaxLengthMeters: GAME_CONFIG.tail.startingLengthMeters,
         powerUps: [],
         powerUpsPlacing: state.settings.powerUpCount > 0,
         outsideZoneSince: null,

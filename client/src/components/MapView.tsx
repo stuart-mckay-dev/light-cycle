@@ -144,7 +144,7 @@ export function MapView({
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-width': 4,
-          // Oldest end dim, newest end bright — you can see the TTL burning down.
+          // Oldest end dim, newest end bright — you can see which end is about to be trimmed.
           'line-gradient': [
             'interpolate',
             ['linear'],

@@ -38,7 +38,7 @@ export type GameEvent =
       /** Milliseconds since the previous fix, as reported by the device. */
       dt: number | null;
     }
-  | { type: 'tail'; points: number; lengthMeters: number; expired: number }
+  | { type: 'tail'; points: number; lengthMeters: number; maxLengthMeters: number; trimmed: number }
   | {
       type: 'powerups_placed';
       requested: number;
@@ -47,7 +47,7 @@ export type GameEvent =
       elapsedMs: number;
       error: string | null;
     }
-  | { type: 'powerup_collected'; id: string; roadClass?: string; score: number }
+  | { type: 'powerup_collected'; id: string; roadClass?: string; score: number; maxLengthMeters: number }
   | {
       type: 'zone';
       state: 'exit' | 'reenter';

@@ -124,7 +124,9 @@ head('Tail');
 const tails = of('tail');
 line('Vertices (max)', String(Math.max(0, ...tails.map((t) => t.event.points))));
 line('Length (max)', `${Math.max(0, ...tails.map((t) => t.event.lengthMeters))} m`);
-line('Expired vertices', String(tails.reduce((a, t) => a + t.event.expired, 0)));
+line('Budget (max)', `${Math.max(0, ...tails.map((t) => t.event.maxLengthMeters ?? 0))} m`);
+// Logs from before the length-limited tail recorded TTL expiry as `expired`.
+line('Trimmed vertices', String(tails.reduce((a, t) => a + (t.event.trimmed ?? t.event.expired ?? 0), 0)));
 
 head('Power-ups');
 const placed = first('powerups_placed');

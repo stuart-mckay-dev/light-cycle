@@ -46,7 +46,10 @@ export function StartScreen({
             Cross your own trail and you're out. Riding <em>alongside</em> it is fine — only
             crossings count.
           </li>
-          <li>Trail expires after {Math.round(GAME_CONFIG.tailTTLSeconds / 60)} minutes.</li>
+          <li>
+            Your trail is {GAME_CONFIG.tail.startingLengthMeters} m long. Every node you collect
+            adds {GAME_CONFIG.powerUps.lengthPerPickupMeters} m.
+          </li>
         </ol>
 
         <div className="field">

@@ -215,8 +215,7 @@ export function SetupScreen({
         ) : (
           <p className="setting__hint setting__hint--warn">
             Without a boundary you can ride away from your own trail in a straight line and
-            wait out the {Math.round(GAME_CONFIG.tailTTLSeconds / 60)}-minute expiry. Nothing
-            can catch you.
+            never have to turn back across it. Nothing can catch you.
           </p>
         )}
       </div>

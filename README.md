@@ -1,6 +1,6 @@
 # Light Cycle 🚲
 
-A real-time multiplayer cycling game inspired by Tron light cycles, played on bicycles in the real world. Players ride city streets leaving expiring path tails behind them. Cross another player's tail at an intersection and you're eliminated. Last rider wins.
+A real-time multiplayer cycling game inspired by Tron light cycles, played on bicycles in the real world. Players ride city streets leaving length-limited path tails behind them, which grow with every power-up. Cross another player's tail at an intersection and you're eliminated. Last rider wins.
 
 Built as a Progressive Web App targeting Portland, Oregon.
 
@@ -27,7 +27,7 @@ Built as a Progressive Web App targeting Portland, Oregon.
 | GPS smoothing + outlier rejection | ✅ |
 | Mapbox GL JS map, player marker, camera follow | ✅ |
 | Tail polyline rendering with age gradient | ✅ |
-| Tail TTL expiration | ✅ |
+| Tail length limit (500 m, +150 m per power-up) | ✅ |
 | Power-up placement + proximity collection | ✅ snapped to the street graph |
 | Self-collision detection | ✅ proximity + crossing-angle filter |
 | Game state machine (idle → locating → configuring → active → eliminated) | ✅ |
@@ -38,8 +38,8 @@ Built as a Progressive Web App targeting Portland, Oregon.
 ### The play zone
 
 Pulled forward from Goalpost 3 because Goalpost 1 was otherwise field-testing a game that
-can't really be lost: with a 3-minute tail TTL, a rider escapes any developing situation by
-riding in a straight line and waiting it out. A boundary is what forces the doubling-back
+can't really be lost: with a tail that falls away behind them, a rider escapes any developing
+situation by riding in a straight line. A boundary is what forces the doubling-back
 that creates the danger.
 
 Once your position is known, a setup sheet appears over the map. Set the number of power-up
@@ -239,7 +239,7 @@ from `gameConfig.ts`. They are recorded in that document's Implementation Notes 
 
 - All players ride simultaneously within a geofenced play zone
 - Every player leaves a path tail behind them as they ride
-- Tails expire after a configurable duration (set by the host at lobby creation)
+- Tails are limited by length: 500 m to start, and every power-up collected adds 150 m (both set by the host at lobby creation). Standing still never shortens a tail
 - **A player is eliminated when they cross another player's active tail — or their own — at an intersection**
 - Two players riding the same street in any direction is **not** a collision — only perpendicular crossings at intersections count
 - Last player remaining wins

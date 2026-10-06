@@ -9,9 +9,6 @@
  */
 
 export const GAME_CONFIG = {
-  /** How long a tail segment stays lethal, in seconds. Host-configurable at Goalpost 2. */
-  tailTTLSeconds: 180,
-
   gps: {
     /**
      * Fixes worse than this (metres of reported accuracy) are dropped outright.
@@ -48,6 +45,16 @@ export const GAME_CONFIG = {
   },
 
   tail: {
+    /**
+     * The trail is limited by length, not by time: once it is longer than the
+     * rider's budget it is trimmed from the oldest end. A time limit let a stuck
+     * rider stand still until their whole trail expired and the map was clear;
+     * a length limit only shrinks when the rider moves. The budget starts here
+     * and grows with every power-up (`powerUps.lengthPerPickupMeters`).
+     * Host-configurable at Goalpost 2.
+     */
+    startingLengthMeters: 500,
+
     /**
      * Minimum spacing between recorded tail vertices, in metres. Below this the
      * newest fix updates the live head instead of appending, which keeps the
@@ -151,6 +158,13 @@ export const GAME_CONFIG = {
     scorePerPickup: 100,
 
     /**
+     * Metres added to the rider's trail budget per pickup. Collecting nodes
+     * makes the trail longer and so the rider more dangerous to themselves —
+     * the core risk/reward trade of the length-limited tail.
+     */
+    lengthPerPickupMeters: 150,
+
+    /**
      * How far from a scattered candidate we will look for a rideable road or
      * path to snap it onto. Generous enough to escape open water and large
      * blocks; beyond this the candidate is abandoned rather than dragged
@@ -206,10 +220,6 @@ export const GAME_CONFIG = {
     followZoom: 16.5,
     /** Portland city centre — the map's home view before the first GPS fix. */
     fallbackCenter: { lng: -122.6784, lat: 45.5152 },
-  },
-
-  /** Milliseconds between TTL sweeps and HUD refreshes. */
-  tickIntervalMs: 1000,
-} as const;
+  },} as const;
 
 export type GameConfig = typeof GAME_CONFIG;
