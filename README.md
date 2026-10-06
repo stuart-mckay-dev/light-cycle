@@ -7,6 +7,25 @@ Built as a Progressive Web App targeting Portland, Oregon.
 > **Proprietary.** The source is published for viewing only; see [License](#license). Deployment and
 > operations are documented in [RUNBOOK.md](RUNBOOK.md).
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/01-start.png" alt="Start screen with the rules and trail colour picker" width="200"></td>
+    <td><img src="docs/screenshots/02-play-zone.png" alt="Setup screen: a draggable play zone over SE Portland and the power-up node count" width="200"></td>
+    <td><img src="docs/screenshots/03-riding.png" alt="Mid-ride: the trail runs up SE 12th, along Taylor and back along Salmon, capped at 650 m of a 650 m budget after one power-up" width="200"></td>
+    <td><img src="docs/screenshots/04-eliminated.png" alt="Elimination screen: crossed own trail at 90 degrees, 470 m back along it" width="200"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Start</sub></td>
+    <td align="center"><sub>Set the play zone</sub></td>
+    <td align="center"><sub>Riding: one node collected, trail at its 650 m budget</sub></td>
+    <td align="center"><sub>Crossing your own trail</sub></td>
+  </tr>
+</table>
+
+<sub>Captured from the dev build on a simulated ride (GPS injected through <code>watchPosition</code>) around SE 12th Ave and Taylor St, not from a real ride.</sub>
+
 ---
 
 ## Project Status
@@ -61,6 +80,12 @@ replacing `watchPosition`), in **both** the dev server and the production build:
   that decides whether the game is playable at all.
 - All 8 power-up nodes land on real streets and paths — independently re-queried, every
   one within 0.1 m of a rideable way.
+- The trail holds at its length budget: 500 m to start, 650 m after one pickup, and
+  standing still does not shorten it (dev build only so far).
+- Slow and fast riding both draw a continuous trail. Two bugs found in simulation in
+  October 2026 stopped the trail growing below ~22 km/h and rejected fixes above ~32 km/h;
+  both are fixed (see "Known issues found in simulation" in `docs/mvp-scope.md`). The ride
+  in the screenshots above had 0 of 238 fixes rejected at ~13 m/s.
 
 **None of it is verified against real GPS on a moving bicycle.** Simulated fixes are
 clean; real ones jitter, drop out between buildings, and arrive at an unpredictable rate.
