@@ -24,10 +24,21 @@ export interface AppendResult {
 /**
  * Adds a position to the tail, respecting minimum vertex spacing.
  *
- * Below the spacing threshold the newest point replaces the head instead of
- * extending it, so a stationary rider does not accumulate thousands of vertices
- * in one spot (which would both bloat memory and create a dense self-collision
- * hazard right where they are standing).
+ * The last element is a *live head* that tracks the rider; everything before it
+ * is a committed vertex. A head that is still closer than the spacing to the
+ * vertex before it is live, and the next fix moves it rather than adding a
+ * point, so a stationary rider does not accumulate thousands of vertices in one
+ * spot (which would both bloat memory and create a dense self-collision hazard
+ * right where they are standing). Once the head has moved the full spacing away
+ * from the last committed vertex it is committed where it stands, and the
+ * following fix starts a new live head.
+ *
+ * Spacing is measured from the last *committed* vertex, never from the live
+ * head. Measuring from the head was a bug: each nudge moved the reference point
+ * along with the rider, so when consecutive fixes were closer together than the
+ * spacing — anyone below ~6 m/s at one fix per second — the head slid forward
+ * forever and the tail never grew past a single point. See docs/mvp-scope.md,
+ * "Known issues found in simulation".
  */
 export function appendTailPoint(
   points: readonly TailPoint[],
@@ -39,21 +50,27 @@ export function appendTailPoint(
     return { points: [next], appended: true };
   }
 
+  // A lone point is the start of the ride and always committed. Beyond that,
+  // the head is live while it sits within the spacing of the vertex behind it.
   const head = points[points.length - 1]!;
-  const moved = haversineMeters(head, next);
+  const prev = points.length >= 2 ? points[points.length - 2]! : null;
+  const headIsLive = prev !== null && haversineMeters(prev, head) < minPointSpacingMeters;
 
   let result: TailPoint[];
   let appended: boolean;
 
-  if (moved < minPointSpacingMeters) {
-    // Replace the head — same vertex, updated position and time.
+  if (headIsLive && prev) {
+    // Move the live head. If this fix carries it the full spacing from the last
+    // committed vertex, it becomes committed in place.
     result = points.slice(0, -1);
     result.push(next);
-    appended = false;
+    appended = haversineMeters(prev, next) >= minPointSpacingMeters;
   } else {
+    // The head is committed; this fix starts the next segment. It is committed
+    // immediately if it is already a full spacing away, live otherwise.
     result = points.slice();
     result.push(next);
-    appended = true;
+    appended = haversineMeters(head, next) >= minPointSpacingMeters;
   }
 
   if (result.length > maxPoints) {

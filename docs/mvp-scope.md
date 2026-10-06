@@ -124,6 +124,16 @@ Two things were built differently from the scope above. Both are deliberate and 
 
 Toolchain note: the project now runs on Node 24 LTS, TypeScript 7 and Vite 8. ../RUNBOOK.md has been updated to match.
 
+### Known issues found in simulation
+
+**Fixed 6 October 2026 — the tail never grew below ~6 m/s.** `appendTailPoint` in client/src/game/tail.ts measured the minimum vertex spacing (`tail.minPointSpacingMeters`, 6 m) from the current head of the tail, and replaced the head whenever a fix was closer than that. Replacing the head moved the reference point along with the rider, so when consecutive fixes were less than 6 m apart, each fix was compared against the one just before it, the head slid forward indefinitely, and the tail stayed a single point. At a typical phone rate of one fix per second that is any speed below about 22 km/h, which covers most real riding: no trail, no self-collision, and a trail-length readout stuck at 0 m.
+
+The original simulated ride did not catch it because its fixes were 8 m apart. A second simulated ride at 3.2 m per fix reproduced it: after 80 fixes covering 256 m, the tail held one point.
+
+Spacing is now measured from the last *committed* vertex. The last element of the tail is a live head that tracks the rider; it is committed in place once it is a full spacing from the vertex behind it, and the next fix starts a new head. A stationary or jittering rider still produces at most two points in one spot. Checked against the old behaviour at fix spacings from 0 to 15 m: the new tail matches the distance ridden at every spacing, committed vertices are always at least 6 m apart, and above 6 m per fix the output is identical to before.
+
+Worth confirming on the outdoor ride: walk the bike slowly for a block and check that the trail draws behind you.
+
 ### Deliverable Checklist
 
 | Deliverable | Status | Notes |
